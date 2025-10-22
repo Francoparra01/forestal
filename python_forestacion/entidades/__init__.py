@@ -1,0 +1,3 @@
+"""
+Entidades de gestión territorial.
+"""

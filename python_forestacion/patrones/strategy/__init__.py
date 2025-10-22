@@ -1,0 +1,3 @@
+"""
+Patrón Strategy.
+"""

@@ -1,0 +1,3 @@
+"""
+Implementaciones concretas de estrategias.
+"""
