@@ -1,0 +1,177 @@
+@startuml Sistema_Forestal_Patrones_v2
+skinparam linetype polyline
+skinparam nodesep 90
+skinparam ranksep 110
+skinparam class {
+  BackgroundColor White
+  BorderColor #222222
+  ArrowColor #222222
+}
+skinparam note {
+  BackgroundColor #FFFFFE
+  BorderColor #999999
+}
+
+title **Sistema Forestal – Patrones (v2)**
+
+' =========================
+'  BLOQUE: SINGLETON
+' =========================
+package "Registro de Servicios (Singleton)" as PkgSingleton {
+  note right
+    Punto único de acceso a los servicios
+    de dominio. Inicialización perezosa y
+    bloqueo para seguridad en hilos.
+  end note
+
+  class CultivoServiceRegistry <<Singleton>> {
+    {static} -_instance : CultivoServiceRegistry
+    {static} -_lock : Lock
+    --
+    -_pino_service : PinoService
+    -_olivo_service : OlivoService
+    -_lechuga_service : LechugaService
+    -_zanahoria_service : ZanahoriaService
+    -_handlers_absorcion : dict
+    -_handlers_mostrar  : dict
+    --
+    {static} +get_instance() : CultivoServiceRegistry
+    -_inicializar_servicios() : void
+    +absorber_agua(cultivo : Cultivo) : float
+    +mostrar_datos(cultivo : Cultivo) : void
+  }
+}
+
+' =========================
+'  BLOQUE: FACTORY
+' =========================
+package "Fábrica de Cultivos (Factory)" as PkgFactory {
+  note right
+    Crea instancias concretas de cultivos
+    sin exponer la lógica de construcción
+    al cliente.
+  end note
+
+  abstract class Cultivo {
+    #_superficie : float
+    #_agua : int
+    --
+    +get_superficie() : float
+    +get_agua() : int
+    +set_agua(agua : int) : void
+  }
+
+  class Pino
+  class Olivo
+  class Lechuga
+  class Zanahoria
+
+  class CultivoFactory <<Factory>> {
+    {static} +crear_cultivo(tipo : String) : Cultivo
+    --
+    {static} -_crear_pino() : Pino
+    {static} -_crear_olivo() : Olivo
+    {static} -_crear_lechuga() : Lechuga
+    {static} -_crear_zanahoria() : Zanahoria
+  }
+
+  Cultivo <|-- Pino
+  Cultivo <|-- Olivo
+  Cultivo <|-- Lechuga
+  Cultivo <|-- Zanahoria
+  CultivoFactory ..> Cultivo : «crea»
+}
+
+' =========================
+'  BLOQUE: STRATEGY
+' =========================
+package "Absorción de Agua (Strategy)" as PkgStrategy {
+  note right
+    Interfaz común para políticas de absorción.
+    Implementaciones intercambiables según el cultivo.
+  end note
+
+  interface AbsorcionAguaStrategy {
+    +calcular_absorcion(fecha, temp, humedad, cultivo) : float
+  }
+
+  class AbsorcionSeasonalStrategy
+  class AbsorcionConstanteStrategy
+
+  AbsorcionAguaStrategy <|.. AbsorcionSeasonalStrategy
+  AbsorcionAguaStrategy <|.. AbsorcionConstanteStrategy
+
+  abstract class CultivoService {
+    #_strategy : AbsorcionAguaStrategy
+    --
+    +set_strategy(s : AbsorcionAguaStrategy) : void
+    +regar(cultivo : Cultivo, temp : float, humedad : float) : float
+  }
+
+  class PinoService
+  class OlivoService
+  class LechugaService
+  class ZanahoriaService
+
+  CultivoService o--> AbsorcionAguaStrategy : usa
+  PinoService -up-|> CultivoService
+  OlivoService -up-|> CultivoService
+  LechugaService -up-|> CultivoService
+  ZanahoriaService -up-|> CultivoService
+}
+
+' =========================
+'  BLOQUE: OBSERVER
+' =========================
+package "Monitoreo Ambiental (Observer)" as PkgObserver {
+  note right
+    Sensores notifican mediciones a interesados.
+    El controlador actúa ante eventos.
+  end note
+
+  interface Observer<T> {
+    +actualizar(evento : T) : void
+  }
+
+  abstract class Observable<T> {
+    #_observadores : List<Observer<T>>
+    --
+    +agregar_observador(obs : Observer<T>) : void
+    +eliminar_observador(obs : Observer<T>) : void
+    +notificar_observadores(evento : T) : void
+  }
+
+  class TemperaturaReaderTask
+  class HumedadReaderTask
+  class ControlRiegoTask
+
+  Observable <|-- TemperaturaReaderTask
+  Observable <|-- HumedadReaderTask
+  Observer  <|.. ControlRiegoTask
+
+  TemperaturaReaderTask -right-> Observer : notifica
+  HumedadReaderTask -right-> Observer : notifica
+}
+
+' =========================
+'  CLIENTE
+' =========================
+class Main {
+  +main() : void
+}
+
+' =========================
+'  ENLACES ENTRE BLOQUES
+' =========================
+Main --> CultivoFactory : usa
+Main --> CultivoServiceRegistry : usa
+Main --> TemperaturaReaderTask : crea
+Main --> HumedadReaderTask : crea
+Main --> ControlRiegoTask : crea
+
+CultivoServiceRegistry --> PinoService
+CultivoServiceRegistry --> OlivoService
+CultivoServiceRegistry --> LechugaService
+CultivoServiceRegistry --> ZanahoriaService
+
+@enduml
