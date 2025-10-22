@@ -1,0 +1,185 @@
+@startuml Riego_Estrategias_Absorcion
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+title Diagrama de Secuencia: Sistema de Riego con Estrategias\nEjecución del método regar con Strategy Pattern
+
+box "Usuario" #LightBlue
+participant "Cliente" as Cliente
+end box
+
+box "<<Singleton>>\nCultivoServiceRegistry" #LightYellow
+participant ":CultivoRegistry" as CSR
+end box
+
+box "<<Service>>\nPinoService" #LightYellow
+participant ":PinoService" as PS
+end box
+
+box "<<Strategy>>\nAbsorcionStrategy" #Orange
+participant ":AbsorcionSeasonal\nStrategy" as ASS
+end box
+
+box "<<Entity>>\nPino" #LightGreen
+participant ":Pino" as Pino
+end box
+
+box "<<Entity>>\nPlantacion" #LightGreen
+participant ":Plantacion" as PL
+end box
+
+== 1. PATRON SINGLETON - Obtener Instancia Única ==
+
+Cliente -> CSR: get_instance()
+activate Cliente
+activate CSR
+
+note right of CSR: Verifica si existe instancia\ncon lock para thread-safety
+
+alt Instancia no existe
+    
+    CSR -> CSR: <<create>>\n__init__()
+    activate CSR
+    
+    note right of CSR: Crea única instancia\ncon todos los servicios
+    
+    CSR --> CSR: instance
+    deactivate CSR
+    
+end
+
+CSR --> Cliente: registry
+deactivate CSR
+
+== 2. PATRON STRATEGY - Seleccionar Algoritmo ==
+
+Cliente -> CSR: absorber_agua(cultivo: Pino)
+activate CSR
+
+CSR -> CSR: _identificar_servicio(cultivo)
+activate CSR
+
+note right of CSR: Determina servicio según\ntipo de cultivo
+
+CSR --> CSR: PinoService
+deactivate CSR
+
+CSR -> PS: regar(cultivo, temp=12.5, hum=45.0)
+activate PS
+
+note right of PS: Temperatura: 12.5°C\nHumedad: 45.0%
+
+PS -> PS: get_estrategia()
+activate PS
+
+note right of PS: Obtiene estrategia configurada\npara este servicio
+
+PS --> PS: estrategia_seasonal
+deactivate PS
+
+== 3. CÁLCULO DE ABSORCIÓN ==
+
+PS -> ASS: calcular_absorcion(\nfecha=today, temp=12.5,\nhum=45.0, cultivo=pino)
+activate ASS
+
+ASS -> ASS: _determinar_estacion(fecha)
+activate ASS
+
+note right of ASS: Calcula estación del año:\nVerano/Otoño/Invierno/Primavera
+
+ASS --> ASS: estacion
+deactivate ASS
+
+ASS -> Pino: get_superficie()
+activate Pino
+Pino --> ASS: 2.5 m²
+deactivate Pino
+
+ASS -> ASS: _aplicar_factor_estacional()
+activate ASS
+
+note right of ASS: Factor Primavera: 1.2\nFactor Verano: 1.5\nFactor Otoño: 0.9\nFactor Invierno: 0.6
+
+ASS --> ASS: factor
+deactivate ASS
+
+ASS -> ASS: _calcular_ajuste_clima(temp, hum)
+activate ASS
+
+note right of ASS: Ajuste temperatura:\n(temp - 10) * 0.05\nAjuste humedad:\n(60 - hum) * 0.02
+
+ASS --> ASS: ajuste_climatico
+deactivate ASS
+
+ASS -> ASS: absorcion = superficie * factor\n* ajuste_climatico
+activate ASS
+
+note right of ASS: Fórmula final:\n2.5 * 1.2 * 1.15 = 3.45 L
+
+ASS --> ASS: 3.45
+deactivate ASS
+
+ASS --> PS: 3.45
+deactivate ASS
+
+== 4. ACTUALIZAR AGUA Y CULTIVO ==
+
+PS -> PL: get_agua_disponible()
+activate PL
+PL --> PS: 500 L
+deactivate PL
+
+alt Agua suficiente (>= absorcion)
+    
+    PS -> PL: set_agua_disponible(500 - 3.45)
+    activate PL
+    PL --> PS
+    deactivate PL
+    
+    PS -> Pino: incrementar_agua(3.45)
+    activate Pino
+    
+    note right of Pino: Acumula agua absorbida\npor el cultivo
+    
+    Pino --> PS
+    deactivate Pino
+    
+    PS -> Pino: actualizar_estado_salud()
+    activate Pino
+    
+    note right of Pino: Recalcula estado:\nSaludable/Estresado/Crítico
+    
+    Pino --> PS
+    deactivate Pino
+    
+    PS --> CSR: 3.45
+    
+else Agua insuficiente
+    
+    PS --> CSR: <<exception>>\nAguaInsuficienteException
+    
+end
+
+deactivate PS
+
+== 5. MOSTRAR RESULTADOS ==
+
+CSR -> Pino: get_agua_acumulada()
+activate Pino
+Pino --> CSR: 3.45 L
+deactivate Pino
+
+CSR -> Pino: get_estado_salud()
+activate Pino
+Pino --> CSR: "Saludable"
+deactivate Pino
+
+note right of CSR: Imprime:\n"Cultivo Pino absorbió 3.45L\nEstado: Saludable"
+
+CSR --> Cliente: 3.45
+deactivate CSR
+
+deactivate Cliente
+
+@enduml
